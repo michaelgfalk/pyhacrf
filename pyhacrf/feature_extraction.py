@@ -10,9 +10,9 @@ import itertools
 class PairFeatureExtractor(object):
     """Extract features from sequence pairs.
 
-    For each feature, a grid is constructed for a sequency pair. The 
-    features are stacked, producing a 3 dimensional matrix of 
-    dimensions: 
+    For each feature, a grid is constructed for a sequency pair. The
+    features are stacked, producing a 3 dimensional matrix of
+    dimensions:
 
     (length of sequence 1) X (length of sequence 2) X (number of features)
 
@@ -34,11 +34,11 @@ class PairFeatureExtractor(object):
             ...
             return feature_grid
 
-    Given two sequences, s1 and s1, return a numpy.array with dimensions 
+    Given two sequences, s1 and s1, return a numpy.array with dimensions
     (length of array1) X (length of array2).
 
-    For performance reasons, we take advantage of numpy broadcasting, and 
-    array1 is a column array and array2 is a row array. 
+    For performance reasons, we take advantage of numpy broadcasting, and
+    array1 is a column array and array2 is a row array.
 
     For a 'matching character' feature between 'kaas' and 'cheese', the
     sequences are transformed and then we use broadcasting
@@ -55,7 +55,7 @@ class PairFeatureExtractor(object):
                      [0, 0, 0, 0, 1, 0]])
 
     When writing you own real feature functions, you can assume that
-    the arrays will come in with the right shape.    
+    the arrays will come in with the right shape.
 
     Sparse feature functions look similar:
 
@@ -92,10 +92,10 @@ class PairFeatureExtractor(object):
         self._sparse_features = []
         if sparse:
             self._sparse_features = sparse
-        self.K = (len(self._binary_features) 
+        self.K = (len(self._binary_features)
                   + sum(num_feats for _, num_feats in self._sparse_features))
 
-            
+
 
     def fit_transform(self, raw_X, y=None):
         """Like transform. Transform sequence pairs to feature arrays that can be used as input to `Hacrf` models.
@@ -127,7 +127,7 @@ class PairFeatureExtractor(object):
             length of sequence2_n, and K is the number of features.
             Feature matrix list, for use with estimators or further transformers.
         """
-        
+
         return [self._extract_features(self._to_array(sequence1).T,
                                        self._to_array(sequence2))
                 for sequence1, sequence2 in raw_X]
@@ -150,7 +150,7 @@ class PairFeatureExtractor(object):
                 k = n_binary_features
 
                 for feature_function, num_features in self._sparse_features:
-                    
+
                     feature_array[i, j, k + feature_function(i, j, array1, array2)] = 1.0
                     k += num_features
 
@@ -199,14 +199,18 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
 
     transition: boolean, optional
         Adds binary features for pairs of (lower case) input characters.
+
+    charset: string, optional
+        A custom charset for use when transition is set to true
     """
 
     # Constants
+    # Default character set for if transition == True
     CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
 
-    
 
-    def __init__(self, bias=1.0, start=False, end=False, match=False, numeric=False, transition=False):
+
+    def __init__(self, bias=1.0, start=False, end=False, match=False, numeric=False, transition=False, charset=False):
         # TODO: For longer strings, tokenize and use Levenshtein
         # distance up until a lattice position.  Other (possibly)
         # useful features might be whether characters are consonant or
@@ -218,20 +222,23 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
                            matches,
                            digits]
 
-        self._binary_features = [feature 
-                                 for feature, active 
-                                 in zip(binary_features, 
+        self._binary_features = [feature
+                                 for feature, active
+                                 in zip(binary_features,
                                         binary_features_active)
                                  if active]
         self._sparse_features = []
         if transition:
-            characters_to_index = {character: index for index, character in enumerate(self.CHARACTERS)}
+            if charset:
+                characters_to_index = {character: index for index, character in enumerate(charset)}
+            else:
+                characters_to_index = {character: index for index, character in enumerate(self.CHARACTERS)}
             curried_charIndex = functools.partial(charIndex,
                                                   char2index = characters_to_index)
-            self._sparse_features.append((curried_charIndex, 
+            self._sparse_features.append((curried_charIndex,
                                           len(characters_to_index) ** 2))
 
-        self.K = (len(self._binary_features) 
+        self.K = (len(self._binary_features)
                   + sum(num_feats for _, num_feats in self._sparse_features))
 
     def _to_array(self, sequence):
@@ -263,7 +270,3 @@ def matches(s1, s2) :
 
 def digits(s1, s2) :
     return np.char.isdigit(s1) & np.char.isdigit(s2)
-
-
-
-
